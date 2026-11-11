@@ -1,41 +1,12 @@
 @echo off
+title AI Trading Bot - GitHub Step-by-Step Pusher
 echo ========================================================
-echo  AI TRADING BOT - GITHUB SYNC HELPER
+echo  AI TRADING BOT - STEP-BY-STEP GITHUB PUSHER
+echo  (Har file ka alag commit aur push for maximum contributions)
 echo ========================================================
 echo.
 
-where git >nul 2>nul
-if %errorlevel% neq 0 (
-    echo [ERROR] Git is not installed on your system!
-    echo Please download and install Git from: https://git-scm.com/download/win
-    echo Then run this script again.
-    pause
-    exit /b
-)
-
-echo [1/4] Initializing Git repository...
-if not exist ".git" (
-    git init
-    git branch -M main
-)
-
-echo [2/4] Staging files (Note: .env and private keys are ignored!)...
-git add .
-
-echo [3/4] Creating commit...
-git commit -m "feat: AI Intraday Trading Bot with Price Action & Paper Trading"
+python "C:\Users\SHIVA TIWARI\Coding_Projects\03_Automation_And_Utility_Scripts\push_code_to_github_step_by_step.py"
 
 echo.
-set /p REPO_URL="Enter your GitHub Repository URL (or press Enter to skip push): "
-if not "%REPO_URL%"=="" (
-    git remote remove origin >nul 2>nul
-    git remote add origin %REPO_URL%
-    echo [4/4] Pushing to GitHub...
-    git push -u origin main
-    echo.
-    echo [SUCCESS] Code pushed to GitHub safely!
-) else (
-    echo Staged and committed locally. You can push anytime later.
-)
-
 pause
