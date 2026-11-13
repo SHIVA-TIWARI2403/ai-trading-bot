@@ -55,6 +55,7 @@ class Indicators:
 
     @classmethod
     def apply_all(cls, df: pd.DataFrame) -> pd.DataFrame:
+        df = df.copy()
         df = cls.add_ema(df, [20, 50])
         df = cls.add_vwap(df)
         df = cls.add_rsi(df)
