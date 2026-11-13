@@ -29,9 +29,18 @@ class Config:
         "INFY.NS"         # Top IT Stock
     ]
 
-    # Data Settings
-    TIMEFRAME = "5m"      # 5-minute intraday candles
-    CANDLE_COUNT = 100    # Past candles for S/R and EMA calculation
+    # Data & Strategy Settings
+    TIMEFRAME = "5m"            # 5-minute intraday execution candles
+    TIMEFRAME_TREND = "15m"      # 15-minute macro trend filter (MTF)
+    CANDLE_COUNT = 100          # Past candles for S/R and EMA calculation
+
+    # Upgrades Toggles
+    ENABLE_TRAILING_SL = os.getenv("ENABLE_TRAILING_SL", "True").lower() in ("true", "1", "yes")
+    ENABLE_MTF = os.getenv("ENABLE_MTF", "True").lower() in ("true", "1", "yes")
+
+    # Telegram Alert Settings (Free Mobile Notifications)
+    TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 
     # Broker API Settings (Future Live Trading)
     BROKER_CHOICE = os.getenv("BROKER_CHOICE", "NONE")
