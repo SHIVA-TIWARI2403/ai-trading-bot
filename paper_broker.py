@@ -1,12 +1,14 @@
 import os
 import csv
 from datetime import datetime
+from config import Config
 
 class PaperBroker:
     """
     Virtual Broker simulation:
     - Tracks virtual capital and open intraday positions.
     - Monitors real-time price against Target and Stop Loss.
+    - Features Dynamic Trailing Stop Loss (TSL) to lock in profits.
     - Logs every completed trade to trades_journal.csv.
     """
 
@@ -35,22 +37,25 @@ class PaperBroker:
         Executes a simulated intraday market order.
         """
         order_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        risk_per_share = abs(entry_price - sl)
         self.open_positions[symbol] = {
             "symbol": symbol,
             "side": side,  # BUY or SELL
             "qty": qty,
             "entry_price": entry_price,
             "stop_loss": sl,
+            "initial_sl": sl,
+            "risk_per_share": risk_per_share,
             "target": target,
             "entry_time": order_time,
             "reason": reason
         }
         print(f"\n[PAPER ORDER EXECUTED] {side} {qty} shares of {symbol} @ Rs.{entry_price:.2f} | SL: Rs.{sl:.2f} | Target: Rs.{target:.2f}")
 
-    def update_positions(self, market_prices: dict) -> list[dict]:
+    def update_positions(self, market_prices: dict, trailing_callback=None) -> list[dict]:
         """
         Checks open positions against current market prices.
-        Triggers SL or Target exit.
+        Applies Trailing Stop Loss and triggers SL/Target exit.
         """
         closed_trades = []
         symbols_to_close = []
@@ -65,6 +70,47 @@ class PaperBroker:
             sl = pos['stop_loss']
             target = pos['target']
             qty = pos['qty']
+            risk_ps = pos.get('risk_per_share', abs(entry_p - sl))
+
+            # ==========================================
+            # UPGRADE: DYNAMIC TRAILING STOP LOSS (TSL)
+            # ==========================================
+            if Config.ENABLE_TRAILING_SL and risk_ps > 0:
+                if side == "BUY":
+                    # Level 2: Price at 1.5R profit -> Lock in 0.5R profit
+                    if current_price >= (entry_p + 1.5 * risk_ps) and sl < (entry_p + 0.5 * risk_ps):
+                        new_sl = round(entry_p + 0.5 * risk_ps, 2)
+                        print(f"🔒 [TRAILING SL] {symbol} SL raised to Rs.{new_sl:.2f} (Locking in +Rs.{(0.5 * risk_ps * qty):.2f} profit!)")
+                        if trailing_callback:
+                            trailing_callback(symbol, sl, new_sl, current_price)
+                        pos['stop_loss'] = new_sl
+                        sl = new_sl
+                    # Level 1: Price at 1.0R profit -> Move SL to Break-Even (Cost to Cost)
+                    elif current_price >= (entry_p + 1.0 * risk_ps) and sl < entry_p:
+                        new_sl = round(entry_p, 2)
+                        print(f"🔒 [TRAILING SL] {symbol} SL moved to Break-Even Rs.{new_sl:.2f} (Risk is now ZERO!)")
+                        if trailing_callback:
+                            trailing_callback(symbol, sl, new_sl, current_price)
+                        pos['stop_loss'] = new_sl
+                        sl = new_sl
+
+                elif side == "SELL":  # Short
+                    # Level 2: Short at 1.5R profit -> Lock in 0.5R profit
+                    if current_price <= (entry_p - 1.5 * risk_ps) and sl > (entry_p - 0.5 * risk_ps):
+                        new_sl = round(entry_p - 0.5 * risk_ps, 2)
+                        print(f"🔒 [TRAILING SL] {symbol} Short SL lowered to Rs.{new_sl:.2f} (Locking in +Rs.{(0.5 * risk_ps * qty):.2f} profit!)")
+                        if trailing_callback:
+                            trailing_callback(symbol, sl, new_sl, current_price)
+                        pos['stop_loss'] = new_sl
+                        sl = new_sl
+                    # Level 1: Short at 1.0R profit -> Move SL to Break-Even
+                    elif current_price <= (entry_p - 1.0 * risk_ps) and sl > entry_p:
+                        new_sl = round(entry_p, 2)
+                        print(f"🔒 [TRAILING SL] {symbol} Short SL moved to Break-Even Rs.{new_sl:.2f} (Risk is now ZERO!)")
+                        if trailing_callback:
+                            trailing_callback(symbol, sl, new_sl, current_price)
+                        pos['stop_loss'] = new_sl
+                        sl = new_sl
 
             exit_reason = None
             exit_price = current_price
@@ -74,7 +120,7 @@ class PaperBroker:
                     exit_reason = "TARGET_HIT"
                     exit_price = target
                 elif current_price <= sl:
-                    exit_reason = "STOPLOSS_HIT"
+                    exit_reason = "TRAILING_SL_HIT" if sl > pos['initial_sl'] else "STOPLOSS_HIT"
                     exit_price = sl
                 pnl = (exit_price - entry_p) * qty
 
@@ -83,7 +129,7 @@ class PaperBroker:
                     exit_reason = "TARGET_HIT"
                     exit_price = target
                 elif current_price >= sl:
-                    exit_reason = "STOPLOSS_HIT"
+                    exit_reason = "TRAILING_SL_HIT" if sl < pos['initial_sl'] else "STOPLOSS_HIT"
                     exit_price = sl
                 pnl = (entry_p - exit_price) * qty
 
