@@ -2,6 +2,7 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+from config import Config
 
 class DataFeed:
     """
@@ -23,11 +24,18 @@ class DataFeed:
                 df.dropna(inplace=True)
                 return df
             else:
-                print(f"[DataFeed] No online data received for {symbol}. Generating simulated market data for testing.")
                 return DataFeed._generate_simulated_data()
         except Exception as e:
-            print(f"[DataFeed Error] Failed to fetch {symbol}: {e}")
             return DataFeed._generate_simulated_data()
+
+    @staticmethod
+    def get_mtf_data(symbol: str) -> dict:
+        """
+        Fetches both 5-minute (execution) and 15-minute (macro trend) candle data for MTF analysis.
+        """
+        df_5m = DataFeed.get_intraday_data(symbol, interval=Config.TIMEFRAME, period="5d")
+        df_15m = DataFeed.get_intraday_data(symbol, interval=Config.TIMEFRAME_TREND, period="1mo")
+        return {"5m": df_5m, "15m": df_15m}
 
     @staticmethod
     def get_current_price(symbol: str) -> float:
