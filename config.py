@@ -43,7 +43,7 @@ class Config:
     TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 
     # Admin Security
-    ADMIN_PIN = os.getenv("ADMIN_PIN", "2403")  # Secret PIN for Owner Access
+    ADMIN_PIN = os.getenv("ADMIN_PIN", "KHUSHIEE2403")  # Secret PIN for Owner Access
 
     # Broker API Settings (Future Live Trading)
     BROKER_CHOICE = os.getenv("BROKER_CHOICE", "NONE")
